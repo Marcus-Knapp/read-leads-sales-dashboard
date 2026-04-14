@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Read Motor Group – Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --navy:#1C2B36; --teal:#028090; --mint:#02C39A; --amber:#E07B00;
+  --coral:#C0392B; --purple:#534AB7; --slate:#546E7A; --white:#fff;
+  --bg:#F4F7F8; --card:#fff; --border:#D8E0E5;
+  --teal-l:#E1F5EE; --amber-l:#FEF3E2; --coral-l:#FDECEC; --purple-l:#EEEDFE;
+  --r:10px; --rs:6px;
+}
+@media(prefers-color-scheme:dark){
+  :root{--bg:#101C24;--card:#172028;--border:#243340;--white:#e8f2f6;
+    --teal-l:#0a2e38;--amber-l:#2e1d00;--coral-l:#2e0e0e;--purple-l:#1e1b40;--slate:#8fa8b8;}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--white);font-size:14px;line-height:1.5;display:flex;min-height:100vh}
+
+aside{width:230px;background:var(--navy);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo-tag{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--mint);margin-bottom:4px}
+.logo-name{font-size:16px;font-weight:600;color:#fff;line-height:1.3}
+nav{padding:12px 0;flex:1}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);padding:10px 18px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;font-size:13px;color:rgba(255,255,255,.6);cursor:pointer;border-left:2px solid transparent;transition:all .15s;user-select:none}
+.nav-item:hover{color:#fff;background:rgba(255,255,255,.05)}
+.nav-item.active{color:var(--mint);border-left-color:var(--mint);background:rgba(2,201,154,.08)}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.8}
+.nav-item.active svg{opacity:1}
+.sidebar-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:rgba(255,255,255,.35)}
+.period-badge{display:inline-block;background:rgba(2,128,144,.25);color:var(--mint);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;margin-top:4px}
+
+main{flex:1;padding:24px;overflow:auto}
+.section{display:none}.section.active{display:block}
+
+.page-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.page-hdr h1{font-size:22px;font-weight:600;color:var(--white)}
+.page-hdr p{font-size:13px;color:var(--slate);margin-top:3px}
+.src-badge{display:inline-flex;align-items:center;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid;white-space:nowrap}
+.src-hyundai{background:var(--teal-l);color:var(--teal);border-color:var(--teal)}
+.src-rmg{background:var(--purple-l);color:var(--purple);border-color:var(--purple)}
+.src-sales{background:var(--amber-l);color:var(--amber);border-color:var(--amber)}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);margin-bottom:6px}
+.kpi-val{font-size:28px;font-weight:700;color:var(--white);line-height:1}
+.kpi-delta{font-size:12px;margin-top:5px;font-weight:500}
+.up{color:var(--mint)}.down{color:var(--coral)}.neu{color:var(--slate)}
+.kpi-sub{font-size:11px;color:var(--slate);margin-top:2px}
+
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.grid-1{margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--slate);margin-bottom:14px}
+.span-2{grid-column:1/-1}
+.chart-box{position:relative}
+
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--slate)}
+.leg-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.leg-dash{width:16px;height:0;border-top:2px dashed;flex-shrink:0}
+
+.dealer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:20px}
+.dealer-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.dealer-hdr{background:var(--navy);padding:10px 14px;font-size:12px;font-weight:600;color:#fff}
+.dealer-hdr.warn{background:#5a1515}
+.dealer-body{padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.d-stat{display:flex;justify-content:space-between;align-items:center}
+.d-label{font-size:11px;color:var(--slate)}
+.d-vals{display:flex;gap:6px;align-items:baseline}
+.d-curr{font-size:15px;font-weight:700;color:var(--white)}
+.d-prev{font-size:11px;color:var(--slate)}
+.d-arrow{font-size:11px;font-weight:700}
+.bar-wrap{height:5px;background:var(--border);border-radius:3px;margin-top:2px}
+.bar-fill{height:5px;border-radius:3px}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 10px;background:var(--bg);color:var(--slate);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--white)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(2,128,144,.08)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-teal{background:var(--teal-l);color:var(--teal)}
+.badge-amber{background:var(--amber-l);color:var(--amber)}
+.badge-coral{background:var(--coral-l);color:var(--coral)}
+.note{font-size:11px;color:var(--slate);font-style:italic;margin-top:10px}
+
+@media(max-width:800px){
+  body{flex-direction:column}
+  aside{width:100%;height:auto;position:relative}
+  .grid-2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<aside>
+  <div class="logo">
+    <div class="logo-tag">Analytics Dashboard</div>
+    <div class="logo-name">Read Motor Group</div>
+  </div>
+  <nav>
+    <div class="nav-label">Lead sources</div>
+    <div class="nav-item active" onclick="show('hyundai',this)">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 11V5l6-4 6 4v6l-6 4-6-4z"/></svg>
+      hyundai.co.uk
+    </div>
+    <div class="nav-item" onclick="show('rmg',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 2a9 9 0 0 1 0 12M8 2a9 9 0 0 0 0 12M2 8h12"/></svg>
+      read-motorgroup.co.uk
+    </div>
+    <div class="nav-label">Performance</div>
+    <div class="nav-item" onclick="show('sales',this)">
+      <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="8" width="3" height="7" rx="1"/><rect x="6" y="5" width="3" height="10" rx="1"/><rect x="11" y="2" width="3" height="13" rx="1"/></svg>
+      Overall sales
+    </div>
+  </nav>
+  <div class="sidebar-foot">
+    Period<br>
+    <span class="period-badge">Q1 2025 vs Q1 2026</span>
+  </div>
+</aside>
+
+<main>
+
+<!-- ═══ SECTION 1 — hyundai.co.uk Hot Leads ═══ -->
+<div id="sec-hyundai" class="section active">
+  <div class="page-hdr">
+    <div>
+      <h1>hyundai.co.uk Leads</h1>
+      <p>Keyloop Hot Leads · 5 Hyundai dealerships · Q1 2025 vs Q1 2026</p>
+    </div>
+    <span class="src-badge src-hyundai">hyundai.co.uk</span>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Total leads 2026</div>
+      <div class="kpi-val">444</div>
+      <div class="kpi-delta up">▲ +15.9% vs 383 in 2025</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Response rate</div>
+      <div class="kpi-val">100%</div>
+      <div class="kpi-delta neu">Maintained both years</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg response time</div>
+      <div class="kpi-val">14 min</div>
+      <div class="kpi-delta down">▼ Was 8 min in 2025</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg response score</div>
+      <div class="kpi-val">80%</div>
+      <div class="kpi-delta down">▼ Was 82% in 2025</div>
+    </div>
+  </div>
+
+  <div class="card-title">Dealership performance — Q1 2025 vs Q1 2026</div>
+  <div class="dealer-grid">
+    <div class="dealer-card">
+      <div class="dealer-hdr">Lincoln</div>
+      <div class="dealer-body">
+        <div class="d-stat"><span class="d-label">Leads received</span><div class="d-vals"><span class="d-curr">118</span><span class="d-prev">was 100</span><span class="d-arrow up">▲+18%</span></div></div>
+        <div class="d-stat"><span class="d-label">Response time</span><div class="d-vals"><span class="d-curr">20 min</span><span class="d-prev">was 8</span><span class="d-arrow down">▼worse</span></div></div>
+        <div class="d-stat"><span class="d-label">Response score</span><div class="d-vals"><span class="d-curr">88%</span><span class="d-prev">was 84%</span><span class="d-arrow up">▲</span></div></div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:88%;background:var(--mint)"></div></div>
+      </div>
+    </div>
+    <div class="dealer-card">
+      <div class="dealer-hdr warn">Burton ⚠ score alert</div>
+      <div class="dealer-body">
+        <div class="d-stat"><span class="d-label">Leads received</span><div class="d-vals"><span class="d-curr">117</span><span class="d-prev">was 71</span><span class="d-arrow up">▲+65%</span></div></div>
+        <div class="d-stat"><span class="d-label">Response time</span><div class="d-vals"><span class="d-curr">7 min</span><span class="d-prev">was 14</span><span class="d-arrow up">▲faster</span></div></div>
+        <div class="d-stat"><span class="d-label">Response score</span><div class="d-vals"><span class="d-curr">53%</span><span class="d-prev">was 96%</span><span class="d-arrow down">▼▼</span></div></div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:53%;background:var(--coral)"></div></div>
+      </div>
+    </div>
+    <div class="dealer-card">
+      <div class="dealer-hdr">Kings Lynn</div>
+      <div class="dealer-body">
+        <div class="d-stat"><span class="d-label">Leads received</span><div class="d-vals"><span class="d-curr">77</span><span class="d-prev">was 72</span><span class="d-arrow up">▲+7%</span></div></div>
+        <div class="d-stat"><span class="d-label">Response time</span><div class="d-vals"><span class="d-curr">12 min</span><span class="d-prev">was 10</span><span class="d-arrow down">▼worse</span></div></div>
+        <div class="d-stat"><span class="d-label">Response score</span><div class="d-vals"><span class="d-curr">80%</span><span class="d-prev">was 64%</span><span class="d-arrow up">▲</span></div></div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:80%;background:var(--mint)"></div></div>
+      </div>
+    </div>
+    <div class="dealer-card">
+      <div class="dealer-hdr">Boston</div>
+      <div class="dealer-body">
+        <div class="d-stat"><span class="d-label">Leads received</span><div class="d-vals"><span class="d-curr">69</span><span class="d-prev">was 71</span><span class="d-arrow down">▼−3%</span></div></div>
+        <div class="d-stat"><span class="d-label">Response time</span><div class="d-vals"><span class="d-curr">4 min</span><span class="d-prev">was 4</span><span class="d-arrow neu">→ same</span></div></div>
+        <div class="d-stat"><span class="d-label">Response score</span><div class="d-vals"><span class="d-curr">90%</span><span class="d-prev">was 75%</span><span class="d-arrow up">▲</span></div></div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:90%;background:var(--mint)"></div></div>
+      </div>
+    </div>
+    <div class="dealer-card">
+      <div class="dealer-hdr warn">Worksop ⚠ response time</div>
+      <div class="dealer-body">
+        <div class="d-stat"><span class="d-label">Leads received</span><div class="d-vals"><span class="d-curr">63</span><span class="d-prev">was 69</span><span class="d-arrow down">▼−9%</span></div></div>
+        <div class="d-stat"><span class="d-label">Response time</span><div class="d-vals"><span class="d-curr">31 min</span><span class="d-prev">was 7</span><span class="d-arrow down">▼▼</span></div></div>
+        <div class="d-stat"><span class="d-label">Response score</span><div class="d-vals"><span class="d-curr">90%</span><span class="d-prev">was 70%</span><span class="d-arrow up">▲</span></div></div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:90%;background:var(--mint)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Leads received by dealership</div>
+      <div class="legend">
+        <div class="leg"><span class="leg-sq" style="background:var(--teal)"></span>Q1 2025</div>
+        <div class="leg"><span class="leg-sq" style="background:var(--mint)"></span>Q1 2026</div>
+      </div>
+      <div class="chart-box" style="height:220px">
+        <canvas id="hl_leads" role="img" aria-label="Hot leads by dealership">Lincoln 100 to 118. Burton 71 to 117. Kings Lynn 72 to 77. Boston 71 to 69. Worksop 69 to 63.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Avg response time in minutes — lower is better</div>
+      <div class="legend">
+        <div class="leg"><span class="leg-sq" style="background:var(--teal)"></span>Q1 2025</div>
+        <div class="leg"><span class="leg-sq" style="background:var(--coral)"></span>Q1 2026</div>
+      </div>
+      <div class="chart-box" style="height:220px">
+        <canvas id="hl_time" role="img" aria-label="Response time by dealership">Lincoln 8 to 20. Kings Lynn 10 to 12. Boston 4 to 4. Burton 14 to 7. Worksop 7 to 31.</canvas>
+      </div>
+    </div>
+    <div class="card span-2">
+      <div class="card-title">Avg response score — higher is better</div>
+      <div class="legend">
+        <div class="leg"><span class="leg-sq" style="background:var(--teal)"></span>Q1 2025</div>
+        <div class="leg"><span class="leg-sq" style="background:var(--mint)"></span>Q1 2026</div>
+      </div>
+      <div class="chart-box" style="height:200px">
+        <canvas id="hl_score" role="img" aria-label="Response score by dealership">Lincoln 84 to 88. Kings Lynn 64 to 80. Boston 75 to 90. Burton 96 to 53. Worksop 70 to 90.</canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 2 — read-motorgroup.co.uk Leads ═══ -->
+<div id="sec-rmg" class="section">
+  <div class="page-hdr">
+    <div>
+      <h1>read-motorgroup.co.uk Leads</h1>
+      <p>Website enquiries · all franchises · Q1 2025 vs Q1 2026</p>
+    </div>
+    <span class="src-badge src-rmg">read-motorgroup.co.uk</span>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Total enquiries 2026</div>
+      <div class="kpi-val">1,517</div>
+      <div class="kpi-delta down">▼ −3.9% vs 1,578 in 2025</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Unique customers</div>
+      <div class="kpi-val">993</div>
+      <div class="kpi-delta up">▲ +27.3% vs 780 in 2025</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Service enquiries</div>
+      <div class="kpi-val">465</div>
+      <div class="kpi-delta up">▲ +5.4% vs 441 in 2025</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Callback requests</div>
+      <div class="kpi-val">329</div>
+      <div class="kpi-delta up">▲ +28.5% vs 256 in 2025</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Top source 2026</div>
+      <div class="kpi-val" style="font-size:20px">Direct</div>
+      <div class="kpi-delta up">635 visits (beat Google in 2026)</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Paid CPC (new)</div>
+      <div class="kpi-val">74</div>
+      <div class="kpi-delta up">▲ New channel in 2026 — was 0</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Monthly enquiry volume</div>
+      <div class="legend">
+        <div class="leg"><span class="leg-sq" style="background:var(--purple)"></span>Q1 2025</div>
+        <div class="leg"><span class="leg-dash" style="border-color:var(--teal)"></span>Q1 2026</div>
+      </div>
+      <div class="chart-box" style="height:220px">
+        <canvas id="rmg_monthly" role="img" aria-label="RMG monthly volume">Jan 514 to 566. Feb 516 to 554. Mar 548 to 397.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Traffic source comparison</div>
+      <div class="legend">
+        <div class="leg"><span class="leg-sq" style="background:var(--purple)"></span>Q1 2025</div>
+        <div class="leg"><span class="leg-sq" style="background:var(--teal)"></span>Q1 2026</div>
+      </div>
+      <div class="chart-box" style="height:220px">
+        <canvas id="rmg_source" role="img" aria-label="RMG traffic sources">Google Organic 496 to 492. Direct 427 to 635. Bing 24 to 35. AutoTrader 19 to 22. Google Paid 0 to 74.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Enquiry type mix — Q1 2025</div>
+      <div class="chart-box" style="height:250px">
+        <canvas id="rmg_type25" role="img" aria-label="Enquiry types 2025">Service 441, Valuation 427, Callback 256, Payment 93, Used General 92, General 86, Other 183.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Enquiry type mix — Q1 2026</div>
+      <div class="chart-box" style="height:250px">
+        <canvas id="rmg_type26" role="img" aria-label="Enquiry types 2026">Service 465, Callback 329, Valuation 219, General 144, Used General 67, Payment 62, Other 231.</canvas>
+      </div>
+    </div>
+    <div class="card span-2">
+      <div class="card-title">Enquiries by location — Q1 2025 vs Q1 2026</div>
+      <div class="legend">
+        <div class="leg"><span class="leg-sq" style="background:var(--purple)"></span>Q1 2025</div>
+        <div class="leg"><span class="leg-sq" style="background:var(--teal)"></span>Q1 2026</div>
+      </div>
+      <div class="chart-box" style="height:270px">
+        <canvas id="rmg_locs" role="img" aria-label="RMG enquiries by location">Derby 302 to 211. Burton 184 to 293. Lincoln 153 to 176. Worksop 148 to 123. Boston 137 to 133. Doncaster 136 to 100. Grimsby 102 to 96. Kings Lynn 92 to 86.</canvas>
+      </div>
+    </div>
+    <div class="card span-2">
+      <div class="card-title">Enquiries by franchise — Q1 2025 vs Q1 2026</div>
+      <div class="legend">
+        <div class="leg"><span class="leg-sq" style="background:var(--purple)"></span>Q1 2025</div>
+        <div class="leg"><span class="leg-sq" style="background:var(--teal)"></span>Q1 2026</div>
+      </div>
+      <div class="chart-box" style="height:190px">
+        <canvas id="rmg_franchise" role="img" aria-label="RMG enquiries by franchise">Hyundai 1254 to 1218. MG 85 to 73. Jeep 74 to 68. Alfa Romeo 74 to 46. VW 50 to 61. Suzuki 39 to 44.</canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECTION 3 — Overall Sales ═══ -->
+<div id="sec-sales" class="section">
+  <div class="page-hdr">
+    <div>
+      <h1>Overall Sales</h1>
+      <p>Group Sales + Burton combined · Q1 2026 · 1,195 total vehicles</p>
+    </div>
+    <span class="src-badge src-sales">Q1 2026 only</span>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Total sales</div>
+      <div class="kpi-val">1,195</div>
+      <div class="kpi-sub">Group 986 · Burton 209</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Used vehicles</div>
+      <div class="kpi-val">942</div>
+      <div class="kpi-delta neu">78.8% of all sales</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">New vehicles</div>
+      <div class="kpi-val">253</div>
+      <div class="kpi-delta neu">21.2% of all sales</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">#1 used model</div>
+      <div class="kpi-val" style="font-size:20px">Tucson</div>
+      <div class="kpi-sub">146 units sold</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Retail customers</div>
+      <div class="kpi-val">860</div>
+      <div class="kpi-sub">Retail 611 + Private 249</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Trade sales</div>
+      <div class="kpi-val">208</div>
+      <div class="kpi-delta neu">17.4% of all sales</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Monthly sales — used vs new</div>
+      <div class="legend">
+        <div class="leg"><span class="leg-sq" style="background:var(--teal)"></span>Used</div>
+        <div class="leg"><span class="leg-sq" style="background:var(--amber)"></span>New</div>
+      </div>
+      <div class="chart-box" style="height:220px">
+        <canvas id="sales_monthly" role="img" aria-label="Monthly sales">Used Jan 385, Feb 357, Mar 200. New Jan 79, Feb 51, Mar 123.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Customer type breakdown</div>
+      <div class="chart-box" style="height:220px">
+        <canvas id="sales_custtype" role="img" aria-label="Customer types">Retail 611, Private 249, Trade 208, Motability 44, Fleet 39, Other 44.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Used sales by location</div>
+      <div class="chart-box" style="height:290px">
+        <canvas id="sales_locs" role="img" aria-label="Used sales by location">Burton 160, Lincoln 124, Grimsby 110, Derby 105, Worksop 97, Boston 85, Doncaster 82, Kings Lynn 68.</canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Top makes — used vehicles</div>
+      <div class="chart-box" style="height:290px">
+        <canvas id="sales_makes" role="img" aria-label="Top used makes">Hyundai 597, MG 47, Suzuki 34, Kia 29, Ford 28, VW 25, Vauxhall 20, Jeep 18.</canvas>
+      </div>
+    </div>
+    <div class="card span-2">
+      <div class="card-title">Top used models — Q1 2026</div>
+      <div class="chart-box" style="height:210px">
+        <canvas id="sales_models" role="img" aria-label="Top used models">i10 164, Tucson 146, Kona 117, i20 59, Bayon 35, IONIQ 25, MG ZS 21, Swift 20, i30 13, Inster 12.</canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="card grid-1">
+    <div class="card-title">Location summary — Q1 2026</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Location</th><th>Total</th><th>Used</th><th>New</th><th>Top make</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Burton</strong></td><td>183</td><td>160</td><td>23</td><td><span class="badge badge-teal">Hyundai</span></td><td>From separate file · most consistent monthly pattern</td></tr>
+          <tr><td><strong>Lincoln</strong></td><td>159</td><td>124</td><td>35</td><td><span class="badge badge-teal">Hyundai</span></td><td>Highest group volume (excl. Burton)</td></tr>
+          <tr><td><strong>Grimsby</strong></td><td>130</td><td>110</td><td>20</td><td><span class="badge badge-teal">Hyundai</span></td><td></td></tr>
+          <tr><td><strong>Derby</strong></td><td>126</td><td>105</td><td>21</td><td><span class="badge badge-teal">Hyundai</span></td><td></td></tr>
+          <tr><td><strong>Worksop</strong></td><td>115</td><td>97</td><td>18</td><td><span class="badge badge-teal">Hyundai</span></td><td></td></tr>
+          <tr><td><strong>Boston</strong></td><td>111</td><td>85</td><td>26</td><td><span class="badge badge-teal">Hyundai</span></td><td></td></tr>
+          <tr><td><strong>Kings Lynn</strong></td><td>104</td><td>68</td><td>36</td><td><span class="badge badge-teal">Hyundai</span></td><td>High proportion of new vehicle sales</td></tr>
+          <tr><td><strong>Doncaster</strong></td><td>101</td><td>82</td><td>19</td><td><span class="badge badge-teal">Hyundai</span></td><td></td></tr>
+          <tr><td><strong>Fleet / Other</strong></td><td>66</td><td>34</td><td>32</td><td><span class="badge badge-amber">Mixed</span></td><td>Fleet Sales + Workshop units</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">No Q1 2025 sales data available — year-on-year sales comparison will be possible once Q1 2025 files are uploaded to the Google Sheet.</p>
+  </div>
+</div>
+
+</main>
+
+<script>
+const TEAL='#028090',MINT='#02C39A',AMBER='#E07B00',CORAL='#C0392B',PURPLE='#534AB7',SLATE='#546E7A';
+const DEALERS=['Lincoln','Kings Lynn','Boston','Burton','Worksop'];
+const MONTHS=['January','February','March'];
+
+const AX={grid:{color:'rgba(120,140,150,.15)'},ticks:{color:SLATE,font:{size:11}}};
+const AX_NG={grid:{display:false},ticks:{color:SLATE,font:{size:11}}};
+const BASE_OPTS={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:AX_NG,y:AX}};
+
+function bar(id,labels,datasets,extra={}){
+  const c=document.getElementById(id);if(!c)return;
+  new Chart(c,{type:'bar',data:{labels,datasets},options:{...BASE_OPTS,barPercentage:.7,categoryPercentage:.8,...extra}});
+}
+function line(id,labels,datasets){
+  const c=document.getElementById(id);if(!c)return;
+  new Chart(c,{type:'line',data:{labels,datasets},options:{...BASE_OPTS,elements:{line:{tension:.35}}}});
+}
+function donut(id,labels,data,colors){
+  const c=document.getElementById(id);if(!c)return;
+  new Chart(c,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'rgba(0,0,0,.2)'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{legend:{position:'right',labels:{color:SLATE,font:{size:11},boxWidth:11,padding:8}}}}});
+}
+function hbar(id,labels,data,color){
+  const c=document.getElementById(id);if(!c)return;
+  new Chart(c,{type:'bar',data:{labels,datasets:[{data,backgroundColor:color,borderRadius:3}]},
+    options:{...BASE_OPTS,indexAxis:'y',scales:{x:AX,y:AX_NG}}});
+}
+
+// ── Hot Leads ──
+bar('hl_leads',DEALERS,
+  [{label:'Q1 2025',data:[100,72,71,71,69],backgroundColor:TEAL,borderRadius:3},
+   {label:'Q1 2026',data:[118,77,69,117,63],backgroundColor:MINT,borderRadius:3}]);
+
+bar('hl_time',DEALERS,
+  [{label:'Q1 2025',data:[8,10,4,14,7],backgroundColor:TEAL,borderRadius:3},
+   {label:'Q1 2026',data:[20,12,4,7,31],backgroundColor:CORAL,borderRadius:3}]);
+
+bar('hl_score',DEALERS,
+  [{label:'Q1 2025',data:[84,64,75,96,70],backgroundColor:TEAL,borderRadius:3},
+   {label:'Q1 2026',data:[88,80,90,53,90],backgroundColor:MINT,borderRadius:3}],
+  {scales:{x:AX_NG,y:{...AX,max:110,ticks:{color:SLATE,callback:v=>v+'%'}}}});
+
+// ── RMG Leads ──
+line('rmg_monthly',MONTHS,
+  [{label:'Q1 2025',data:[514,516,548],borderColor:PURPLE,backgroundColor:'transparent',pointBackgroundColor:PURPLE,borderWidth:2.5},
+   {label:'Q1 2026',data:[566,554,397],borderColor:TEAL,backgroundColor:'transparent',pointBackgroundColor:TEAL,borderWidth:2.5,borderDash:[5,4]}]);
+
+bar('rmg_source',['Google Organic','Direct','Bing','AutoTrader','Google Paid','Referral'],
+  [{label:'Q1 2025',data:[496,427,24,19,0,62],backgroundColor:PURPLE,borderRadius:3},
+   {label:'Q1 2026',data:[492,635,35,22,74,25],backgroundColor:TEAL,borderRadius:3}]);
+
+donut('rmg_type25',
+  ['Service','Valuation','Callback','Online Payment','Used General','General','Other'],
+  [441,427,256,93,92,86,183],
+  [TEAL,MINT,PURPLE,AMBER,CORAL,SLATE,'#8fa8b8']);
+
+donut('rmg_type26',
+  ['Service','Callback','Valuation','General','Used General','Online Payment','Video Request','Other'],
+  [465,329,219,144,67,62,38,193],
+  [TEAL,PURPLE,MINT,AMBER,CORAL,SLATE,'#3b8080','#8fa8b8']);
+
+const LOC_LABELS=['Derby','Burton','Lincoln','Worksop','Boston','Doncaster','Grimsby','Kings Lynn'];
+bar('rmg_locs',LOC_LABELS,
+  [{label:'Q1 2025',data:[302,184,153,148,137,136,102,92],backgroundColor:PURPLE,borderRadius:3},
+   {label:'Q1 2026',data:[211,293,176,123,133,100,96,86],backgroundColor:TEAL,borderRadius:3}]);
+
+bar('rmg_franchise',['Hyundai','MG','Jeep','Alfa Romeo','VW','Suzuki'],
+  [{label:'Q1 2025',data:[1254,85,74,74,50,39],backgroundColor:PURPLE,borderRadius:3},
+   {label:'Q1 2026',data:[1218,73,68,46,61,44],backgroundColor:TEAL,borderRadius:3}]);
+
+// ── Sales ──
+bar('sales_monthly',MONTHS,
+  [{label:'Used',data:[385,357,200],backgroundColor:TEAL,borderRadius:3},
+   {label:'New', data:[79,51,123],  backgroundColor:AMBER,borderRadius:3}]);
+
+donut('sales_custtype',
+  ['Retail','Private','Trade','Motability','Fleet','Other'],
+  [611,249,208,44,39,44],
+  [TEAL,MINT,CORAL,AMBER,PURPLE,SLATE]);
+
+hbar('sales_locs',
+  ['Burton','Lincoln','Grimsby','Derby','Worksop','Boston','Doncaster','Kings Lynn','Fleet/Other'],
+  [160,124,110,105,97,85,82,68,91],
+  [MINT,TEAL,TEAL,TEAL,TEAL,TEAL,TEAL,TEAL,SLATE]);
+
+hbar('sales_makes',
+  ['Hyundai','MG','Suzuki','Kia','Ford','VW','Vauxhall','Jeep'],
+  [597,47,34,29,28,25,20,18],
+  [TEAL,MINT,MINT,MINT,MINT,MINT,MINT,MINT]);
+
+bar('sales_models',
+  ['i10','Tucson','Kona','i20','Bayon','IONIQ','MG ZS','Swift','i30','Inster'],
+  [{data:[164,146,117,59,35,25,21,20,13,12],
+    backgroundColor:[TEAL,TEAL,TEAL,TEAL,TEAL,TEAL,MINT,MINT,TEAL,TEAL],borderRadius:3}],
+  {scales:{x:{...AX_NG,ticks:{color:SLATE,maxRotation:30}},y:AX}});
+
+// ── Nav ──
+function show(id,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>
